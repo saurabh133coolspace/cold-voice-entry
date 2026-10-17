@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0b5394">
+<title>Cool Space — बोलकर एंट्री</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root { --b:#0b5394; --g:#188038; --r:#c5221f; --bg:#f4f6fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Noto Sans Devanagari", sans-serif; background:var(--bg); color:#202124; }
+  header { background:var(--b); color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+  header h1 { font-size:18px; margin:0; }
+  header button { background:transparent; border:1px solid #fff8; color:#fff; border-radius:8px; padding:6px 10px; font-size:14px; }
+  main { padding:14px; max-width:560px; margin:auto; }
+  .card { background:#fff; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 1px 3px #0002; }
+  .mic-wrap { text-align:center; padding:8px 0 4px; }
+  #mic { width:120px; height:120px; border-radius:50%; border:none; background:var(--b); color:#fff; font-size:48px; box-shadow:0 4px 12px #0b539466; }
+  #mic.on { background:var(--r); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 #c5221f88} 70%{box-shadow:0 0 0 22px #c5221f00} 100%{box-shadow:0 0 0 0 #c5221f00} }
+  #hint { color:#5f6368; font-size:14px; margin-top:8px; min-height:20px; }
+  textarea { width:100%; font-size:17px; padding:10px; border-radius:10px; border:1px solid #ccc; min-height:64px; font-family:inherit; }
+  .row { display:flex; gap:8px; margin-top:8px; }
+  .row > * { flex:1; }
+  button.btn { font-size:16px; padding:12px; border-radius:10px; border:none; background:#e8eaed; }
+  button.pri { background:var(--g); color:#fff; font-weight:600; }
+  button.blue { background:var(--b); color:#fff; }
+  label { display:block; font-size:13px; color:#5f6368; margin-top:8px; }
+  input, select { width:100%; font-size:17px; padding:9px; border-radius:8px; border:1px solid #ccc; margin-top:3px; background:#fff; }
+  .summary { font-size:17px; font-weight:600; margin:4px 0 6px; color:var(--b); }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:10px; background:#e8f0fe; color:var(--b); }
+  .ok { color:var(--g); } .warn { color:#b06000; } .err { color:var(--r); }
+  ul#recent { list-style:none; padding:0; margin:0; }
+  ul#recent li { border-bottom:1px solid #eee; padding:8px 0; font-size:14px; }
+  ul#recent li small { color:#5f6368; }
+  .hidden { display:none; }
+  details summary { cursor:pointer; font-weight:600; }
+  .samples li { margin:4px 0; font-size:14px; }
+  #banner { background:#fef7e0; border:1px solid #f9e1a0; color:#7a4f00; padding:10px; border-radius:10px; font-size:14px; margin-bottom:12px; }
+  #alts button { display:block; width:100%; text-align:left; margin-top:4px; background:#f1f3f4; border:none; border-radius:8px; padding:8px; font-size:15px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>❄️ Cool Space — बोलकर एंट्री</h1>
+  <button id="btnSettings">⚙️ Settings</button>
+</header>
+<main>
+  <div id="banner" class="hidden"></div>
+
+  <section class="card hidden" id="settings">
+    <b>Settings</b>
+    <label>Google Apps Script Web App URL (…/exec)</label>
+    <input id="setUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+    <label>Entered by (आपका नाम)</label>
+    <input id="setBy" placeholder="Saurabh">
+    <label>Speech language</label>
+    <select id="setLang"><option value="hi-IN">हिंदी (hi-IN)</option><option value="en-IN">English India (en-IN)</option></select>
+    <label><input type="checkbox" id="setSpeak" style="width:auto"> Speak confirmation (बोलकर पुष्टि)</label>
+    <div class="row"><button class="btn blue" id="btnSaveSet">Save settings</button><button class="btn" id="btnTest">Test connection</button></div>
+    <div id="setMsg" style="margin-top:8px;font-size:14px"></div>
+  </section>
+
+  <section class="card">
+    <div class="mic-wrap">
+      <button id="mic" aria-label="Speak">🎤</button>
+      <div id="hint">माइक दबाएं और बोलें</div>
+    </div>
+    <textarea id="transcript" placeholder="जो बोला वो यहाँ आएगा — या यहाँ टाइप भी कर सकते हैं"></textarea>
+    <div id="alts"></div>
+    <div class="row"><button class="btn" id="btnParse">↻ Read again</button><button class="btn" id="btnClear">✕ Clear</button></div>
+  </section>
+
+  <section class="card hidden" id="confirm">
+    <div><span class="pill" id="typePill"></span></div>
+    <div class="summary" id="summary"></div>
+    <label>Entry type</label>
+    <select id="type">
+      <option value="Stock">Stock (बोरी आवक / निकासी)</option>
+      <option value="Chamber Readings">Chamber Readings (तापमान / नमी)</option>
+      <option value="Power">Power (मीटर / DG / डीजल / बिजली कट)</option>
+      <option value="Payments">Payments (किराया / उधार / खर्च)</option>
+      <option value="Notes">Notes (नोट)</option>
+    </select>
+    <div id="fields"></div>
+    <div class="row"><button class="btn pri" id="btnSave">✔ Save to Sheet</button><button class="btn" id="btnCancel">Cancel</button></div>
+  </section>
+
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b>Recent entries</b>
+      <span><button class="btn" id="btnSync" style="padding:6px 10px;font-size:13px">Sync</button>
+      <button class="btn" id="btnCsv" style="padding:6px 10px;font-size:13px">CSV</button></span>
+    </div>
+    <div id="queueMsg" style="font-size:13px;margin:6px 0"></div>
+    <ul id="recent"></ul>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>ऐसे बोलें — sample phrases</summary>
+      <ul class="samples">
+        <li><b>Stock:</b> "रमेश की 200 बोरी आई लॉट 45 चेंबर 3"</li>
+        <li><b>Stock out:</b> "सुरेश यादव के 150 बोरे निकाले लॉट 112"</li>
+        <li><b>Chamber:</b> "चेंबर 2 टेंपरेचर 3.5 डिग्री ह्यूमिडिटी 90"</li>
+        <li><b>Chamber:</b> "चेंबर चार तापमान साढ़े तीन डिग्री नमी 88 प्रतिशत"</li>
+        <li><b>Meter:</b> "मीटर 1 रीडिंग 45210"</li>
+        <li><b>Power:</b> "आज बिजली 4 घंटे गई, डीजी 3 घंटे चला, 25 लीटर डीजल लगा"</li>
+        <li><b>Payment:</b> "शर्मा जी से 20000 मिले कैश"</li>
+        <li><b>Rent:</b> "सुरेश से किराया डेढ़ लाख मिला ऑनलाइन"</li>
+        <li><b>Udhar:</b> "रमेश को 5000 उधार दिए"</li>
+        <li><b>Expense:</b> "मजदूरी में 3500 खर्च हुए"</li>
+        <li><b>Note:</b> anything else, e.g. "कल अमोनिया गैस चेक करवानी है"</li>
+      </ul>
+      <p style="font-size:13px;color:#5f6368">Tip: one entry per recording. Speak the keyword (बोरी / चेंबर / डिग्री / मीटर / डीजी / मिले / उधार / खर्च) so it lands in the right tab. You can fix anything before saving.</p>
+    </details>
+  </section>
+</main>
+
+<script src="parser.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var LS = { url: 'cs_url', by: 'cs_by', lang: 'cs_lang', speak: 'cs_speak', entries: 'cs_entries' };
+  var cfg = {
+    get url() { return localStorage.getItem(LS.url) || ''; },
+    get by() { return localStorage.getItem(LS.by) || ''; },
+    get lang() { return localStorage.getItem(LS.lang) || 'hi-IN'; },
+    get speak() { return localStorage.getItem(LS.speak) !== '0'; }
+  };
+  var current = null;   // { raw, type, fields }
+
+  // ---- setup link support: …/#url=<exec url>&by=<name> ----
+  (function () {
+    if (location.hash.length > 1) {
+      var p = new URLSearchParams(location.hash.slice(1));
+      if (p.get('url')) localStorage.setItem(LS.url, p.get('url').trim());
+      if (p.get('by')) localStorage.setItem(LS.by, p.get('by'));
+      history.replaceState(null, '', location.pathname);
+    }
+  })();
+
+  function loadEntries() { try { return JSON.parse(localStorage.getItem(LS.entries) || '[]'); } catch (e) { return []; } }
+  function storeEntries(a) { localStorage.setItem(LS.entries, JSON.stringify(a.slice(-300))); }
+
+  function istNow() {
+    var d = new Date(Date.now() + 330 * 60000);
+    return d.toISOString().replace('T', ' ').slice(0, 19);
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function banner() {
+    var b = $('banner');
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var msgs = [];
+    if (!SR) msgs.push('इस ब्राउज़र में वॉइस नहीं चलेगा। Android पर Google Chrome में खोलें। (Typing still works.)');
+    if (!cfg.url) msgs.push('Sheet अभी जुड़ी नहीं है — entries फ़ोन में सेव होंगी और URL डालते ही Sheet में चली जाएंगी। ⚙️ Settings में Web App URL डालें।');
+    b.innerHTML = msgs.join('<br><br>');
+    b.classList.toggle('hidden', !msgs.length);
+  }
+
+  // ---- speech ----
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null, listening = false, finalText = '';
+  function startRec() {
+    if (!SR) { alert('Voice needs Google Chrome on Android. You can type instead.'); return; }
+    rec = new SR();
+    rec.lang = cfg.lang; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 3;
+    finalText = ''; $('alts').innerHTML = '';
+    rec.onstart = function () { listening = true; $('mic').classList.add('on'); $('hint').textContent = 'सुन रहा हूँ… बोलिए'; };
+    rec.onresult = function (ev) {
+      var interim = '', alts = [];
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        var r = ev.results[i];
+        if (r.isFinal) { finalText += r[0].transcript + ' '; for (var a = 1; a < r.length; a++) alts.push(r[a].transcript); }
+        else interim += r[0].transcript;
+      }
+      $('transcript').value = (finalText + interim).trim();
+      if (alts.length) showAlts(alts);
+    };
+    rec.onerror = function (e) {
+      var m = { 'not-allowed': 'माइक की permission दें (Chrome settings → Site settings → Microphone).', 'no-speech': 'कुछ सुनाई नहीं दिया, फिर से बोलें।', 'network': 'Internet चाहिए (Chrome की voice online चलती है)।' };
+      $('hint').textContent = m[e.error] || ('Error: ' + e.error);
+    };
+    rec.onend = function () {
+      listening = false; $('mic').classList.remove('on');
+      if ($('transcript').value.trim()) { $('hint').textContent = 'चेक करें और Save दबाएं'; doParse(); }
+      else if ($('hint').textContent.indexOf('सुन') === 0) $('hint').textContent = 'माइक दबाएं और बोलें';
+    };
+    try { rec.start(); } catch (e) { $('hint').textContent = String(e); }
+  }
+  function showAlts(alts) {
+    var box = $('alts'); box.innerHTML = '<label>या इनमें से चुनें:</label>';
+    alts.forEach(function (t) { var b = document.createElement('button'); b.textContent = t; b.onclick = function () { $('transcript').value = t; box.innerHTML = ''; doParse(); }; box.appendChild(b); });
+  }
+  $('mic').onclick = function () { if (listening && rec) rec.stop(); else startRec(); };
+
+  // ---- parse & confirm ----
+  function doParse(forceType) {
+    var raw = $('transcript').value.trim();
+    if (!raw) return;
+    var p = CSParser.parse(raw, forceType);
+    current = { raw: raw, type: p.type, fields: p.fields };
+    renderConfirm();
+  }
+  function renderConfirm() {
+    $('confirm').classList.remove('hidden');
+    $('type').value = current.type;
+    $('typePill').textContent = current.type;
+    var box = $('fields'); box.innerHTML = '';
+    CSParser.FIELDS[current.type].forEach(function (k) {
+      var l = document.createElement('label'); l.textContent = k; box.appendChild(l);
+      var inp;
+      if (k === 'In/Out') { inp = document.createElement('select'); ['IN', 'OUT', ''].forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o === 'IN' ? 'IN (आवक)' : o === 'OUT' ? 'OUT (निकासी)' : '—'; inp.appendChild(op); }); }
+      else if (k === 'Type') { inp = document.createElement('select'); ['Received', 'Rent Received', 'Udhar Given', 'Udhar Returned', 'Expense', 'Paid', 'Rent Paid'].forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o; inp.appendChild(op); }); }
+      else if (k === 'Mode') { inp = document.createElement('select'); ['', 'Cash', 'UPI', 'Online', 'Bank', 'Cheque'].forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o || '—'; inp.appendChild(op); }); }
+      else if (k === 'Note') { inp = document.createElement('textarea'); }
+      else { inp = document.createElement('input'); if (!/Party|Variety/.test(k)) inp.inputMode = 'decimal'; }
+      inp.value = current.fields[k] === undefined ? '' : current.fields[k];
+      inp.dataset.k = k;
+      inp.oninput = inp.onchange = function () { current.fields[k] = this.value; $('summary').textContent = CSParser.summary(current); };
+      box.appendChild(inp);
+    });
+    $('summary').textContent = CSParser.summary(current);
+    $('confirm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  $('type').onchange = function () { doParse(this.value); };
+  $('btnParse').onclick = function () { doParse(); };
+  $('btnClear').onclick = function () { $('transcript').value = ''; $('alts').innerHTML = ''; $('confirm').classList.add('hidden'); current = null; };
+  $('btnCancel').onclick = $('btnClear').onclick;
+
+  function speak(text) {
+    if (!cfg.speak || !window.speechSynthesis) return;
+    try { var u = new SpeechSynthesisUtterance(text); u.lang = 'hi-IN'; u.rate = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  $('btnSave').onclick = function () {
+    if (!current) return;
+    var fields = {};
+    CSParser.FIELDS[current.type].forEach(function (k) { var v = current.fields[k]; fields[k] = (v !== '' && !isNaN(v) && !/Party|Variety|Note|Type|Mode|In\/Out/.test(k)) ? Number(v) : (v === undefined ? '' : v); });
+    var entry = { id: uid(), ts: istNow(), tab: current.type, fields: fields, raw: current.raw, by: cfg.by, status: 'pending', summary: CSParser.summary(current) };
+    var all = loadEntries(); all.push(entry); storeEntries(all);
+    speak(entry.summary + '। सेव हो गया।');
+    $('hint').textContent = '✔ ' + entry.summary;
+    $('btnClear').onclick();
+    renderRecent();
+    sync();
+  };
+
+  // ---- sync to Apps Script ----
+  var syncing = false;
+  function sync() {
+    if (syncing || !cfg.url) { renderRecent(); return; }
+    var all = loadEntries();
+    var pend = all.filter(function (e) { return e.status !== 'saved'; });
+    if (!pend.length) { renderRecent(); return; }
+    syncing = true;
+    var body = JSON.stringify({ entries: pend.map(function (e) { return { id: e.id, ts: e.ts, tab: e.tab, fields: e.fields, raw: e.raw, by: e.by }; }) });
+    function mark(ids, status) {
+      var a = loadEntries(); a.forEach(function (e) { if (ids.indexOf(e.id) >= 0) e.status = status; }); storeEntries(a);
+    }
+    fetch(cfg.url, { method: 'POST', body: body, redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) throw new Error(j.error || 'Script error');
+        mark(j.results.filter(function (x) { return x.status === 'saved' || x.status === 'duplicate'; }).map(function (x) { return x.id; }), 'saved');
+        $('queueMsg').innerHTML = '<span class="ok">✔ Sheet में सेव</span>';
+      })
+      .catch(function (err) {
+        if (!navigator.onLine) { $('queueMsg').innerHTML = '<span class="warn">Offline — internet आने पर Sync दबाएं</span>'; return; }
+        // Response not readable (CORS) — send blind; the script de-duplicates by Entry ID.
+        return fetch(cfg.url, { method: 'POST', mode: 'no-cors', body: body }).then(function () {
+          mark(pend.map(function (e) { return e.id; }), 'sent');
+          $('queueMsg').innerHTML = '<span class="ok">Sent ✓ (Sheet में देख लें)</span>';
+        }).catch(function () { $('queueMsg').innerHTML = '<span class="err">Send failed: ' + String(err.message || err) + '</span>'; });
+      })
+      .then(function () { syncing = false; renderRecent(); });
+  }
+  $('btnSync').onclick = function () {
+    var a = loadEntries(); a.forEach(function (e) { if (e.status === 'sent') e.status = 'pending'; }); storeEntries(a); sync();
+  };
+  window.addEventListener('online', sync);
+
+  function renderRecent() {
+    var all = loadEntries().slice().reverse().slice(0, 25);
+    var pend = loadEntries().filter(function (e) { return e.status === 'pending'; }).length;
+    if (!cfg.url && pend) $('queueMsg').innerHTML = '<span class="warn">' + pend + ' entries फ़ोन में सेव हैं — Settings में URL डालें</span>';
+    else if (pend && !syncing) $('queueMsg').innerHTML = '<span class="warn">' + pend + ' pending</span>';
+    $('recent').innerHTML = all.map(function (e) {
+      var st = e.status === 'saved' ? '<span class="ok">✔ Sheet</span>' : e.status === 'sent' ? '<span class="ok">↑ sent</span>' : '<span class="warn">⏳ pending</span>';
+      return '<li><b>' + esc(e.tab) + '</b> — ' + esc(e.summary || '') + '<br><small>' + esc(e.ts) + ' · ' + st + ' · "' + esc(e.raw) + '"</small></li>';
+    }).join('') || '<li><small>No entries yet</small></li>';
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  $('btnCsv').onclick = function () {
+    var all = loadEntries(), rows = [['Timestamp', 'Tab', 'Fields', 'Raw', 'Entered By', 'Status', 'Entry ID']];
+    all.forEach(function (e) { rows.push([e.ts, e.tab, JSON.stringify(e.fields), e.raw, e.by, e.status, e.id]); });
+    var csv = '\ufeff' + rows.map(function (r) { return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'cool-space-voice-entries.csv'; a.click();
+  };
+
+  // ---- settings ----
+  $('btnSettings').onclick = function () {
+    $('settings').classList.toggle('hidden');
+    $('setUrl').value = cfg.url; $('setBy').value = cfg.by; $('setLang').value = cfg.lang; $('setSpeak').checked = cfg.speak;
+  };
+  $('btnSaveSet').onclick = function () {
+    var u = $('setUrl').value.trim();
+    if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) { $('setMsg').innerHTML = '<span class="err">URL should start with https://script.google.com/macros/s/…/exec</span>'; return; }
+    localStorage.setItem(LS.url, u); localStorage.setItem(LS.by, $('setBy').value.trim());
+    localStorage.setItem(LS.lang, $('setLang').value); localStorage.setItem(LS.speak, $('setSpeak').checked ? '1' : '0');
+    $('setMsg').innerHTML = '<span class="ok">Saved ✓</span>'; banner(); sync();
+  };
+  $('btnTest').onclick = function () {
+    var u = $('setUrl').value.trim() || cfg.url;
+    if (!u) { $('setMsg').textContent = 'Paste the URL first'; return; }
+    $('setMsg').textContent = 'Testing…';
+    fetch(u).then(function (r) { return r.json(); }).then(function (j) {
+      $('setMsg').innerHTML = j.ok ? '<span class="ok">✔ Connected to "' + esc(j.sheet) + '"</span>' : '<span class="err">' + esc(j.error) + '</span>';
+    }).catch(function (e) { $('setMsg').innerHTML = '<span class="err">Could not reach the script. Check the deployment has access "Anyone". (' + esc(e.message) + ')</span>'; });
+  };
+
+  banner(); renderRecent(); sync();
+})();
+</script>
+</body>
+</html>
